@@ -1,50 +1,48 @@
 import { Routes, Route, Navigate } from 'react-router-dom';
-import AdminLogin from './pages/AdminLogin';
-import AreaLogin from './pages/AreaLogin';
-import WorkerLogin from './pages/WorkerLogin';
+import Login from './pages/Login';
 import AdminLayout from './pages/AdminPages/AdminLayout';
 import AdminDashboard from './pages/AdminPages/Dashboard';
 import GestionUnificada from './pages/AdminPages/GestionUnificada';
 import Geolocalizacion from './pages/AdminPages/Geolocalizacion';
+import MiPerfil from './pages/AdminPages/MiPerfil';
 import AreaLayout from './pages/AreaPages/AreaLayout';
 import AreaDashboard from './pages/AreaPages/AreaDashboard';
 import GestionTrabajadores from './pages/AreaPages/GestionTrabajadores';
 import AsignacionControl from './pages/AreaPages/AsignacionControl';
 import AreaHistorial from './pages/AreaPages/Historial';
+import AreaMiPerfil from './pages/AreaPages/MiPerfil';
 import WorkerLayout from './pages/WorkerPages/WorkerLayout';
 import WorkerDashboard from './pages/WorkerPages/WorkerDashboard';
 import Historial from './pages/WorkerPages/Historial';
-import MiInformacion from './pages/WorkerPages/MiInformacion';
+import WorkerMiPerfil from './pages/WorkerPages/MiPerfil';
 
 function App() {
   return (
     <div className="App">
       <Routes>
-        {/* Login para administradores (raíz) */}
-        <Route path="/" element={<AdminLogin />} />
-        {/* Login para encargados de área */}
-        <Route path="/login" element={<AreaLogin />} />
-        {/* Login para personal trabajador */}
-        <Route path="/System" element={<WorkerLogin />} />
+        {/* Login único - redirige según rol */}
+        <Route path="/" element={<Login />} />
         {/* Panel Admin protegido */}
-        <Route path="/admin" element={<RequireAuth><AdminLayout /></RequireAuth>}>
+        <Route path="/admin" element={<RequireAuth allowedRole="admin"><AdminLayout /></RequireAuth>}>
           <Route index element={<AdminDashboard />} />
           <Route path="gestion-unificada" element={<GestionUnificada />} />
           <Route path="geolocalizacion" element={<Geolocalizacion />} />
+          <Route path="mi-perfil" element={<MiPerfil />} />
         </Route>
         {/* Panel Área protegido */}
-        <Route path="/area" element={<RequireAuth><AreaLayout /></RequireAuth>}>
+        <Route path="/area" element={<RequireAuth allowedRole="area"><AreaLayout /></RequireAuth>}>
           <Route index element={<AreaDashboard />} />
           <Route path="dashboard" element={<AreaDashboard />} />
           <Route path="gestion-trabajadores" element={<GestionTrabajadores />} />
           <Route path="asignacion-control" element={<AsignacionControl />} />
           <Route path="historial" element={<AreaHistorial />} />
+          <Route path="mi-perfil" element={<AreaMiPerfil />} />
         </Route>
         {/* Panel Trabajador protegido */}
-        <Route path="/worker" element={<RequireAuth><WorkerLayout /></RequireAuth>}>
+        <Route path="/worker" element={<RequireAuth allowedRole="trabajador"><WorkerLayout /></RequireAuth>}>
           <Route index element={<WorkerDashboard />} />
           <Route path="dashboard" element={<WorkerDashboard />} />
-          <Route path="mi-informacion" element={<MiInformacion />} />
+          <Route path="mi-perfil" element={<WorkerMiPerfil />} />
           <Route path="historial" element={<Historial />} />
         </Route>
         {/* Ruta por defecto para páginas no encontradas */}
@@ -72,8 +70,10 @@ function App() {
 
 export default App;
 
-function RequireAuth({ children }) {
+function RequireAuth({ children, allowedRole }) {
   const token = localStorage.getItem('token');
+  const role = localStorage.getItem('role');
   if (!token) return <Navigate to="/" replace />;
+  if (allowedRole && role !== allowedRole) return <Navigate to="/" replace />;
   return children;
 }

@@ -15,6 +15,10 @@ const WorkerDashboard = () => {
   const [selectedId, setSelectedId] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalAssignment, setModalAssignment] = useState(null);
+  const [confirmMarcaje, setConfirmMarcaje] = useState(null);
+  const [comentarioMarcaje, setComentarioMarcaje] = useState('Tiempo correcto');
+  const [editandoComentarioId, setEditandoComentarioId] = useState(null);
+  const [comentarioEdit, setComentarioEdit] = useState('');
 
   const userData = useMemo(() => {
     try { return JSON.parse(localStorage.getItem('userData') || '{}'); } catch { return {}; }
@@ -79,6 +83,8 @@ const WorkerDashboard = () => {
   };
   const hasEntradaHoy = (asignacionId) => getTodayAsistenciasByAsignacion(asignacionId).some((r) => r.tipo !== 'salida');
   const hasSalidaHoy = (asignacionId) => getTodayAsistenciasByAsignacion(asignacionId).some((r) => r.tipo === 'salida');
+  const getEntradaHoy = (asignacionId) => getTodayAsistenciasByAsignacion(asignacionId).find((r) => r.tipo !== 'salida');
+  const getSalidaHoy = (asignacionId) => getTodayAsistenciasByAsignacion(asignacionId).find((r) => r.tipo === 'salida');
   const getAssignmentCenter = (a) => {
     if (!a || !a.geometry) return null;
     const g = a.geometry;
@@ -263,7 +269,47 @@ const WorkerDashboard = () => {
     );
   });
 
-  const handleMarcar = async (a, tipo = 'entrada') => {
+  const formatHora = (f) => (f ? new Date(f).toLocaleTimeString('es', { hour: '2-digit', minute: '2-digit' }) : '—');
+  const formatFechaHora = (d = new Date()) => d.toLocaleString('es', {
+    weekday: 'short', day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit',
+  });
+
+  const estimarRetraso = (a) => {
+    if (!a?.ventana_hasta) return { tarde: false, minutos: 0 };
+    const now = new Date();
+    const [vh, vm] = String(a.ventana_hasta).split(':').map(Number);
+    const limite = new Date(now.getFullYear(), now.getMonth(), now.getDate(), vh || 0, vm || 0, 0);
+    if (now <= limite) return { tarde: false, minutos: 0 };
+    return { tarde: true, minutos: Math.floor((now - limite) / 60000) };
+  };
+
+  const refrescarAsistencias = async () => {
+    try {
+      const resAsis = await apiService.getAsistencias();
+      const dataAsis = resAsis?.data?.data || [];
+      setAsistencias(Array.isArray(dataAsis) ? dataAsis : []);
+    } catch {}
+  };
+
+  const solicitarMarcaje = (a, tipo) => {
+    const retraso = tipo === 'entrada' ? estimarRetraso(a) : { tarde: false, minutos: 0 };
+    setComentarioMarcaje(retraso.tarde ? '' : 'Tiempo correcto');
+    setConfirmMarcaje({ a, tipo, retraso });
+  };
+
+  const confirmarMarcaje = async () => {
+    if (!confirmMarcaje) return;
+    const { a, tipo } = confirmMarcaje;
+    const comentario = comentarioMarcaje.trim();
+    if (tipo === 'entrada' && confirmMarcaje.retraso?.tarde && !comentario) {
+      await alert('Indica el motivo del retraso (ej. tráfico, emergencia).');
+      return;
+    }
+    setConfirmMarcaje(null);
+    await handleMarcar(a, tipo, comentario);
+  };
+
+  const handleMarcar = async (a, tipo = 'entrada', comentario = '') => {
     try {
       setMarkingId(a.id);
       const p = await ensurePosition();
@@ -271,19 +317,36 @@ const WorkerDashboard = () => {
         await alert('Debes estar dentro del área asignada para marcar asistencia.');
         return;
       }
-      await apiService.marcarAsistencia({ id_asignacion: a.id, lat: p[0], lng: p[1], tipo });
-      // refrescar asistencias para actualizar botones
-      try {
-        const resAsis = await apiService.getAsistencias({ trabajadorId: userData.id });
-        const dataAsis = resAsis?.data?.data || [];
-        setAsistencias(Array.isArray(dataAsis) ? dataAsis : []);
-      } catch {}
-      await alert(`Asistencia de ${tipo === 'salida' ? 'salida' : 'entrada'} registrada correctamente.`);
+      const res = await apiService.marcarAsistencia({
+        id_asignacion: a.id,
+        lat: p[0],
+        lng: p[1],
+        tipo,
+        comentario: comentario || undefined,
+      });
+      await refrescarAsistencias();
+      await alert(res?.data?.message || `Asistencia de ${tipo === 'salida' ? 'salida' : 'entrada'} registrada.`);
     } catch (e) {
-      console.error('Error al marcar asistencia:', e);
-      await alert('No se pudo marcar asistencia.');
+      const msg = e?.response?.data?.message || 'No se pudo marcar asistencia.';
+      await alert(msg);
     } finally {
       setMarkingId(null);
+    }
+  };
+
+  const guardarComentarioEditado = async (asistenciaId) => {
+    const texto = comentarioEdit.trim();
+    if (!texto) {
+      await alert('La descripción no puede estar vacía.');
+      return;
+    }
+    try {
+      await apiService.actualizarComentarioAsistencia(asistenciaId, texto);
+      setEditandoComentarioId(null);
+      await refrescarAsistencias();
+      await alert('Descripción actualizada.');
+    } catch (e) {
+      await alert(e?.response?.data?.message || 'No se pudo actualizar la descripción.');
     }
   };
 
@@ -318,8 +381,9 @@ const WorkerDashboard = () => {
 
   return (
     <div className="container-fluid">
-      <div className="d-flex justify-content-between align-items-center mb-3">
-        <h2 className="mb-0">Dashboard - Panel de Trabajador</h2>
+      <div className="panel-page-header">
+        <h2><i className="bi bi-speedometer2 me-2"></i>Panel de control</h2>
+        <p>Marcaje de asistencia y ubicaciones asignadas</p>
       </div>
 
       {loading ? (
@@ -333,9 +397,11 @@ const WorkerDashboard = () => {
               .split(',').map((d) => d.trim()).filter(Boolean).join(', ');
             const ubicacionText = a.ubicacion_descripcion ? `${a.ubicacion_nombre} — ${a.ubicacion_descripcion}` : a.ubicacion_nombre;
             const inside = isInsideAssignment(a);
+            const entrada = getEntradaHoy(a.id);
+            const salida = getSalidaHoy(a.id);
             return (
               <div className="col-lg-6 mb-3" key={a.id}>
-                <div className="card h-100">
+                <div className="card panel-card h-100">
                   <div className="card-header d-flex justify-content-between align-items-start">
                     <div>
                       <div className="fw-bold">{ubicacionText}</div>
@@ -344,15 +410,199 @@ const WorkerDashboard = () => {
                     </div>
                     <span className={`badge ${inside ? 'bg-success' : 'bg-secondary'}`}>{inside ? 'Dentro' : 'Fuera'}</span>
                   </div>
-                  <div className="card-body d-flex justify-content-end">
-                    <button className="btn btn-sm btn-primary" onClick={() => { setSelectedId(a.id); setModalAssignment(a); setIsModalOpen(true); }}>
-                      <i className="bi bi-map me-1"></i>Ver mapa
-                    </button>
+                  <div className="card-body">
+                    <div className="mb-3">
+                      <div className="small fw-semibold text-muted mb-1">Marcaje de hoy</div>
+                      <div className="d-flex flex-column gap-1 small">
+                        <div className="d-flex align-items-center gap-2">
+                          <i className={`bi ${entrada ? 'bi-check-circle-fill text-success' : 'bi-circle text-muted'}`} style={{ fontSize: '1rem' }}></i>
+                          <span>Entrada:</span>
+                          {entrada ? (
+                            <span className="d-flex flex-column">
+                              <span>
+                                {formatHora(entrada.fecha_hora)}
+                                {entrada.estado === 'tarde' && entrada.minutos_tarde != null && (
+                                  <span className="badge bg-warning text-dark ms-1">Tarde ({entrada.minutos_tarde} min)</span>
+                                )}
+                                {entrada.estado === 'a_tiempo' && (
+                                  <span className="badge bg-success ms-1">A tiempo</span>
+                                )}
+                              </span>
+                              {editandoComentarioId === entrada.id ? (
+                                <div className="mt-1">
+                                  <textarea
+                                    className="form-control form-control-sm"
+                                    rows={2}
+                                    value={comentarioEdit}
+                                    onChange={(e) => setComentarioEdit(e.target.value)}
+                                    maxLength={500}
+                                  />
+                                  <div className="d-flex gap-1 mt-1">
+                                    <button type="button" className="btn btn-sm btn-primary" onClick={() => guardarComentarioEditado(entrada.id)}>Guardar</button>
+                                    <button type="button" className="btn btn-sm btn-outline-secondary" onClick={() => setEditandoComentarioId(null)}>Cancelar</button>
+                                  </div>
+                                </div>
+                              ) : (
+                                <span className="text-muted mt-1">
+                                  <i className="bi bi-chat-left-text me-1"></i>
+                                  {entrada.comentario || 'Sin descripción'}
+                                  <button
+                                    type="button"
+                                    className="btn btn-link btn-sm p-0 ms-1"
+                                    onClick={() => { setEditandoComentarioId(entrada.id); setComentarioEdit(entrada.comentario || ''); }}
+                                  >
+                                    Editar
+                                  </button>
+                                </span>
+                              )}
+                            </span>
+                          ) : (
+                            <span className="text-muted">No marcada</span>
+                          )}
+                        </div>
+                        <div className="d-flex align-items-center gap-2">
+                          <i className={`bi ${salida ? 'bi-check-circle-fill text-success' : 'bi-circle text-muted'}`} style={{ fontSize: '1rem' }}></i>
+                          <span>Salida:</span>
+                          {salida ? (
+                            <span>{formatHora(salida.fecha_hora)}</span>
+                          ) : (
+                            <span className="text-muted">No marcada</span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="d-flex flex-wrap gap-2 justify-content-between align-items-center">
+                      <div>
+                        {!entrada && (
+                          <button
+                            className="btn btn-sm btn-success"
+                            disabled={!inside || markingId === a.id}
+                            onClick={() => solicitarMarcaje(a, 'entrada')}
+                          >
+                            {markingId === a.id ? '...' : <><i className="bi bi-box-arrow-in-right me-1"></i>Marcar entrada</>}
+                          </button>
+                        )}
+                        {entrada && !salida && (
+                          <button
+                            className="btn btn-sm btn-warning"
+                            disabled={!inside || markingId === a.id}
+                            onClick={() => solicitarMarcaje(a, 'salida')}
+                          >
+                            {markingId === a.id ? '...' : <><i className="bi bi-box-arrow-right me-1"></i>Marcar salida</>}
+                          </button>
+                        )}
+                        {entrada && salida && (
+                          <span className="badge bg-secondary">Asistencia completa</span>
+                        )}
+                      </div>
+                      <button className="btn btn-sm btn-outline-primary" onClick={() => { setSelectedId(a.id); setModalAssignment(a); setIsModalOpen(true); }}>
+                        <i className="bi bi-map me-1"></i>Ver mapa
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
             );
           })}
+        </div>
+      )}
+
+      {confirmMarcaje && (
+        <div className="modal d-block panel-confirm-modal" tabIndex="-1" role="dialog" style={{ background: 'rgba(15,23,42,0.55)' }}>
+          <div className="modal-dialog modal-dialog-centered" role="document">
+            <div className="modal-content">
+              <div
+                className="modal-header"
+                style={confirmMarcaje.tipo === 'entrada'
+                  ? { background: 'linear-gradient(135deg, #059669, #047857)', color: '#fff' }
+                  : undefined}
+              >
+                <h5 className="modal-title mb-0 text-white">
+                  <i className={`bi ${confirmMarcaje.tipo === 'salida' ? 'bi-box-arrow-right' : 'bi-box-arrow-in-right'} me-2`}></i>
+                  Confirmar {confirmMarcaje.tipo === 'salida' ? 'salida' : 'entrada'}
+                </h5>
+                <button type="button" className="btn-close btn-close-white" aria-label="Cerrar" onClick={() => setConfirmMarcaje(null)}></button>
+              </div>
+              <div className="modal-body">
+                <p className="text-muted mb-3">Revisa los datos antes de registrar:</p>
+                <dl className="panel-confirm-detail mb-3">
+                  <dt>Ubicación</dt>
+                  <dd>
+                    {confirmMarcaje.a.ubicacion_descripcion
+                      ? `${confirmMarcaje.a.ubicacion_nombre} — ${confirmMarcaje.a.ubicacion_descripcion}`
+                      : confirmMarcaje.a.ubicacion_nombre}
+                  </dd>
+                  <dt>Días asignados</dt>
+                  <dd>{String(confirmMarcaje.a.dias || '').split(',').map((d) => d.trim()).filter(Boolean).join(', ') || '—'}</dd>
+                  <dt>Horario programado</dt>
+                  <dd>{(confirmMarcaje.a.hora_entrada || '').slice(0, 5)} – {(confirmMarcaje.a.hora_salida || '').slice(0, 5)}</dd>
+                  {confirmMarcaje.tipo === 'salida' && (
+                    <>
+                      <dt>Entrada registrada hoy</dt>
+                      <dd>{formatHora(getEntradaHoy(confirmMarcaje.a.id)?.fecha_hora)}</dd>
+                    </>
+                  )}
+                  {confirmMarcaje.tipo === 'entrada' && confirmMarcaje.retraso?.tarde && (
+                    <>
+                      <dt>Estado estimado</dt>
+                      <dd>
+                        <span className="badge bg-warning text-dark">
+                          Tarde (~{confirmMarcaje.retraso.minutos} min)
+                        </span>
+                      </dd>
+                    </>
+                  )}
+                  <dt>Hora ({confirmMarcaje.tipo === 'salida' ? 'salida' : 'entrada'})</dt>
+                  <dd>{formatFechaHora()}</dd>
+                  <dt>Ubicación GPS</dt>
+                  <dd>
+                    <span className={`badge ${isInsideAssignment(confirmMarcaje.a) ? 'bg-success' : 'bg-secondary'}`}>
+                      {isInsideAssignment(confirmMarcaje.a) ? 'Dentro del área' : 'Fuera del área'}
+                    </span>
+                    {!isInsideAssignment(confirmMarcaje.a) && (
+                      <span className="text-danger small d-block mt-1">Debes estar dentro del área para confirmar.</span>
+                    )}
+                  </dd>
+                </dl>
+                {confirmMarcaje.tipo === 'entrada' && (
+                  <div>
+                    <label className="form-label fw-semibold">
+                      Descripción {confirmMarcaje.retraso?.tarde ? <span className="text-danger">*</span> : '(opcional)'}
+                    </label>
+                    <textarea
+                      className="form-control"
+                      rows={3}
+                      maxLength={500}
+                      placeholder={confirmMarcaje.retraso?.tarde
+                        ? 'Ej: Llegué tarde por tráfico en la avenida principal...'
+                        : 'Tiempo correcto (puedes dejarlo así o agregar un comentario)'}
+                      value={comentarioMarcaje}
+                      onChange={(e) => setComentarioMarcaje(e.target.value)}
+                    />
+                    <div className="form-text">
+                      {confirmMarcaje.retraso?.tarde
+                        ? 'Obligatorio si llegas tarde. Explica el motivo del retraso.'
+                        : 'Por defecto: "Tiempo correcto". Puedes editarlo después.'}
+                    </div>
+                  </div>
+                )}
+              </div>
+              <div className="modal-footer">
+                <button type="button" className="btn btn-outline-secondary" onClick={() => setConfirmMarcaje(null)}>
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  className={`btn ${confirmMarcaje.tipo === 'salida' ? 'btn-warning' : 'btn-success'}`}
+                  disabled={!isInsideAssignment(confirmMarcaje.a) || markingId === confirmMarcaje.a.id}
+                  onClick={confirmarMarcaje}
+                >
+                  <i className="bi bi-check-lg me-1"></i>
+                  {markingId === confirmMarcaje.a.id ? 'Registrando...' : `Confirmar ${confirmMarcaje.tipo}`}
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
       )}
 
@@ -404,12 +654,12 @@ const WorkerDashboard = () => {
                     <i className="bi bi-arrow-clockwise me-1"></i>Actualizar ubicación
                   </button>
                   {!hasEntradaHoy(modalAssignment?.id) && (
-                    <button className="btn btn-success" disabled={!isInsideAssignment(modalAssignment) || markingId === modalAssignment?.id} onClick={() => handleMarcar(modalAssignment, 'entrada')}>
+                    <button className="btn btn-success" disabled={!isInsideAssignment(modalAssignment) || markingId === modalAssignment?.id} onClick={() => solicitarMarcaje(modalAssignment, 'entrada')}>
                       {markingId === modalAssignment?.id ? 'Marcando...' : 'Marcar entrada'}
                     </button>
                   )}
                   {hasEntradaHoy(modalAssignment?.id) && !hasSalidaHoy(modalAssignment?.id) && (
-                    <button className="btn btn-warning" disabled={!isInsideAssignment(modalAssignment) || markingId === modalAssignment?.id} onClick={() => handleMarcar(modalAssignment, 'salida')}>
+                    <button className="btn btn-warning" disabled={!isInsideAssignment(modalAssignment) || markingId === modalAssignment?.id} onClick={() => solicitarMarcaje(modalAssignment, 'salida')}>
                       {markingId === modalAssignment?.id ? 'Marcando...' : 'Marcar salida'}
                     </button>
                   )}

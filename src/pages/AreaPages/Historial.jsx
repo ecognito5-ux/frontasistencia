@@ -42,13 +42,15 @@ const AreaHistorial = () => {
                   <th>Ubicación</th>
                   <th>Días</th>
                   <th>Horario</th>
+                  <th>Estado</th>
+                  <th>Retraso</th>
                 </tr>
               </thead>
               <tbody>
                 {loading ? (
-                  <tr><td colSpan={5} className="text-center py-4">Cargando...</td></tr>
+                  <tr><td colSpan={7} className="text-center py-4">Cargando...</td></tr>
                 ) : asistencias.length === 0 ? (
-                  <tr><td colSpan={5} className="text-center py-4 text-muted">Sin asistencias registradas</td></tr>
+                  <tr><td colSpan={7} className="text-center py-4 text-muted">Sin asistencias registradas</td></tr>
                 ) : (
                   asistencias.map((a) => (
                     <tr key={a.id}>
@@ -57,6 +59,18 @@ const AreaHistorial = () => {
                       <td>{a.ubicacion_descripcion ? `${a.ubicacion_nombre} — ${a.ubicacion_descripcion}` : a.ubicacion_nombre}</td>
                       <td>{String(a.dias || '').split(',').map((d)=>d.trim()).filter(Boolean).join(', ')}</td>
                       <td>{(a.hora_entrada || '').slice(0,5)} - {(a.hora_salida || '').slice(0,5)}</td>
+                      <td>
+                        {a.tipo === 'entrada' ? (
+                          <span className={`badge ${a.estado === 'tarde' ? 'bg-warning text-dark' : 'bg-success'}`}>
+                            {a.estado === 'tarde' ? 'Tarde' : 'A tiempo'}
+                          </span>
+                        ) : '-'}
+                      </td>
+                      <td>
+                        {a.estado === 'tarde' && a.minutos_tarde != null
+                          ? `${a.minutos_tarde} min`
+                          : '-'}
+                      </td>
                     </tr>
                   ))
                 )}

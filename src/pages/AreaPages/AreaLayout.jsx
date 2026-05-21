@@ -15,19 +15,19 @@ const AreaLayout = () => {
     localStorage.removeItem('token');
     localStorage.removeItem('userData');
     localStorage.removeItem('role');
-    navigate('/login');
+    navigate('/');
   };
 
   return (
-    <div className={`d-flex ${sidebarOpen ? 'sidebar-open' : ''}`} style={{ minHeight: '100vh' }}>
+    <div className={`d-flex panel-layout ${sidebarOpen ? 'sidebar-open' : ''}`}>
       {/* Sidebar */}
-      <div className="bg-dark text-white p-3" style={{ width: '250px' }}>
+      <div className="panel-sidebar panel-sidebar-area p-3">
         <h4 className="mb-4">
           <i className="bi bi-building me-2"></i>
           Panel de Área
         </h4>
         
-        <div className="mb-4 p-3 bg-secondary rounded">
+        <div className="mb-4 p-3 panel-user-card">
           <p className="mb-1 small text-muted">Encargado</p>
           <p className="mb-0 fw-bold">{userData.nombre_completo}</p>
           <p className="mb-0 small">@{userData.username}</p>
@@ -38,25 +38,30 @@ const AreaLayout = () => {
           </p>
         </div>
 
-        <ul className="nav flex-column">
+        <ul className="nav flex-column panel-nav">
           <li className="nav-item mb-2">
-            <Link to="/area/dashboard" className="nav-link text-white" onClick={() => setSidebarOpen(false)}>
-              <i className="bi bi-speedometer2 me-2"></i>Dashboard
+            <Link to="/area/dashboard" className="nav-link" onClick={() => setSidebarOpen(false)}>
+              <i className="bi bi-speedometer2 me-2"></i>Panel de control
             </Link>
           </li>
           <li className="nav-item mb-2">
-            <Link to="/area/gestion-trabajadores" className="nav-link text-white" onClick={() => setSidebarOpen(false)}>
+            <Link to="/area/gestion-trabajadores" className="nav-link" onClick={() => setSidebarOpen(false)}>
               <i className="bi bi-people-fill me-2"></i>Gestión de Trabajadores
             </Link>
           </li>
           <li className="nav-item mb-2">
-            <Link to="/area/asignacion-control" className="nav-link text-white" onClick={() => setSidebarOpen(false)}>
+            <Link to="/area/asignacion-control" className="nav-link" onClick={() => setSidebarOpen(false)}>
               <i className="bi bi-list-task me-2"></i>Asignación de Control
             </Link>
           </li>
           <li className="nav-item mb-2">
-            <Link to="/area/historial" className="nav-link text-white" onClick={() => setSidebarOpen(false)}>
+            <Link to="/area/historial" className="nav-link" onClick={() => setSidebarOpen(false)}>
               <i className="bi bi-clock-history me-2"></i>Historial de Asistencias
+            </Link>
+          </li>
+          <li className="nav-item mb-2">
+            <Link to="/area/mi-perfil" className="nav-link" onClick={() => setSidebarOpen(false)}>
+              <i className="bi bi-person-gear me-2"></i>Mi Perfil
             </Link>
           </li>
         </ul>
@@ -72,7 +77,7 @@ const AreaLayout = () => {
       <div className="sidebar-overlay d-lg-none" onClick={() => setSidebarOpen(false)}></div>
 
       {/* Main Content */}
-      <div className="flex-grow-1 p-4" style={{ backgroundColor: '#f8f9fa' }}>
+      <div className="panel-main panel-main-area">
         <button className="btn btn-outline-secondary d-lg-none mb-3" onClick={() => setSidebarOpen((v)=>!v)}>
           <i className="bi bi-list"></i>
         </button>

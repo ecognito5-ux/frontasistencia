@@ -2,6 +2,21 @@ import { useEffect, useMemo, useState } from 'react';
 import { useDialog } from '../../hooks/useDialog.jsx';
 import { apiService } from '../../services/api';
 
+const MINUTOS_MARCAJE_OPCIONES = [5, 10, 15, 20, 30];
+
+function addMinutesToTime(timeStr, minutes) {
+  const [h, m] = (timeStr || '08:00').split(':').map(Number);
+  const d = new Date(2000, 0, 1, h || 0, m || 0, 0);
+  d.setMinutes(d.getMinutes() + minutes);
+  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+}
+
+function minutosEntre(desde, hasta) {
+  const [h1, m1] = (desde || '00:00').split(':').map(Number);
+  const [h2, m2] = (hasta || '00:00').split(':').map(Number);
+  return (h2 * 60 + m2) - (h1 * 60 + m1);
+}
+
 const dayOptions = [
   { key: 'lun', label: 'Lunes' },
   { key: 'mar', label: 'Martes' },
@@ -33,8 +48,7 @@ const AsignacionControl = () => {
   const [selectedDays, setSelectedDays] = useState([]);
   const [horaEntrada, setHoraEntrada] = useState('08:00');
   const [horaSalida, setHoraSalida] = useState('17:00');
-  const [ventanaDesde, setVentanaDesde] = useState('08:00');
-  const [ventanaHasta, setVentanaHasta] = useState('08:15');
+  const [minutosMarcaje, setMinutosMarcaje] = useState(15);
   const [submitting, setSubmitting] = useState(false);
   const [editId, setEditId] = useState(null);
 
@@ -92,8 +106,7 @@ const AsignacionControl = () => {
     setSelectedDays([]);
     setHoraEntrada('08:00');
     setHoraSalida('17:00');
-    setVentanaDesde('08:00');
-    setVentanaHasta('08:15');
+    setMinutosMarcaje(15);
   };
 
   const openCreate = () => {
@@ -110,8 +123,11 @@ const AsignacionControl = () => {
     setSelectedDays(diasArr);
     setHoraEntrada(item.hora_entrada?.slice(0,5) || '08:00');
     setHoraSalida(item.hora_salida?.slice(0,5) || '17:00');
-    setVentanaDesde(item.ventana_desde ? item.ventana_desde.slice(0,5) : '08:00');
-    setVentanaHasta(item.ventana_hasta ? item.ventana_hasta.slice(0,5) : '08:15');
+    const diff = item.ventana_desde && item.ventana_hasta
+      ? minutosEntre(item.ventana_desde.slice(0,5), item.ventana_hasta.slice(0,5))
+      : 15;
+    const nearest = MINUTOS_MARCAJE_OPCIONES.reduce((a, b) => Math.abs(b - diff) < Math.abs(a - diff) ? b : a);
+    setMinutosMarcaje(nearest);
     setIsModalOpen(true);
   };
 
@@ -129,18 +145,20 @@ const AsignacionControl = () => {
   };
 
   const handleSave = async () => {
-    if (!selectedTrabajador || !selectedUbicacion || selectedDays.length === 0 || !horaEntrada || !horaSalida) {
-      await alert('Completa trabajador, ubicación, días y horarios.');
+    if (!selectedTrabajador || !selectedUbicacion || selectedDays.length === 0 || !horaEntrada) {
+      await alert('Completa trabajador, ubicación, días y hora de entrada.');
       return;
     }
+    const ventanaDesde = horaEntrada;
+    const ventanaHasta = addMinutesToTime(horaEntrada, minutosMarcaje);
     const payload = {
       id_personal_trabajador: parseInt(selectedTrabajador, 10),
       id_ubicacion_geografica: parseInt(selectedUbicacion, 10),
       dias: selectedDays.join(','),
       hora_entrada: horaEntrada,
-      hora_salida: horaSalida,
-      ventana_desde: ventanaDesde || null,
-      ventana_hasta: ventanaHasta || null,
+      hora_salida: horaSalida || '17:00',
+      ventana_desde: ventanaDesde,
+      ventana_hasta: ventanaHasta,
     };
     setSubmitting(true);
     try {
@@ -209,8 +227,8 @@ const AsignacionControl = () => {
                   <th>Ubicación</th>
                   <th>Días</th>
                   <th>Entrada</th>
-                  <th>Salida</th>
-                  <th>Ventana</th>
+                  <th>Salida est.</th>
+                  <th>Marcaje (entrada)</th>
                   <th style={{ width: '120px' }}>Acciones</th>
                 </tr>
               </thead>
@@ -332,30 +350,39 @@ const AsignacionControl = () => {
                   <div className="col-md-6">
                     <label className="form-label">Hora de entrada</label>
                     <input type="time" className="form-control" value={horaEntrada} onChange={(e) => setHoraEntrada(e.target.value)} />
+                    <div className="form-text">Hora programada de inicio de jornada.</div>
                   </div>
                   <div className="col-md-6">
-                    <label className="form-label">Hora de salida</label>
+                    <label className="form-label">Hora de salida estimada</label>
                     <input type="time" className="form-control" value={horaSalida} onChange={(e) => setHoraSalida(e.target.value)} />
+                    <div className="form-text">Solo referencia. El trabajador puede irse cuando quiera; los reportes mostrarán la hora real de salida.</div>
                   </div>
 
                   <div className="col-12">
-                    <div className="alert alert-info mb-0">
+                    <label className="form-label fw-bold">Tiempo de marcaje permitido (minutos después de la hora de entrada)</label>
+                    <select
+                      className="form-select"
+                      style={{ maxWidth: '180px' }}
+                      value={minutosMarcaje}
+                      onChange={(e) => setMinutosMarcaje(Number(e.target.value))}
+                    >
+                      {MINUTOS_MARCAJE_OPCIONES.map((m) => (
+                        <option key={m} value={m}>{m} minutos</option>
+                      ))}
+                    </select>
+                    <div className="form-text mt-1">
+                      Se calculará automáticamente: desde {horaEntrada} hasta {addMinutesToTime(horaEntrada, minutosMarcaje)}
+                    </div>
+                    <div className="alert alert-info mt-2 mb-0">
                       <div className="d-flex">
                         <i className="bi bi-clock-history me-2"></i>
                         <div>
-                          Además podrá marcar unos minutos antes o después del horario programado, siempre y cuando esté en la ubicación.
+                          <strong>A tiempo:</strong> Marcas entre {horaEntrada} y {addMinutesToTime(horaEntrada, minutosMarcaje)} se registran como a tiempo.
+                          <br />
+                          <strong>Tarde:</strong> Si marca después, se registra igual pero se clasifica como tarde y se guarda cuántos minutos de retraso.
                         </div>
                       </div>
                     </div>
-                  </div>
-
-                  <div className="col-md-6">
-                    <label className="form-label">Ventana de marcación (desde)</label>
-                    <input type="time" className="form-control" value={ventanaDesde} onChange={(e) => setVentanaDesde(e.target.value)} />
-                  </div>
-                  <div className="col-md-6">
-                    <label className="form-label">Ventana de marcación (hasta)</label>
-                    <input type="time" className="form-control" value={ventanaHasta} onChange={(e) => setVentanaHasta(e.target.value)} />
                   </div>
                 </div>
               </div>

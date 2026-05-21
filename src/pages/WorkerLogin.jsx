@@ -1,11 +1,13 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import api from '../services/api';
+import { GoogleLogin } from '@react-oauth/google';
+import api, { apiService } from '../services/api';
 
 const WorkerLogin = () => {
   const [form, setForm] = useState({ username: '', password: '' });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
   const navigate = useNavigate();
 
   const handleChange = (e) => {
@@ -30,10 +32,35 @@ const WorkerLogin = () => {
       // Redirigir al dashboard de trabajador
       navigate('/worker');
     } catch (err) {
-      setError(err.message);
+      setError(err.response?.data?.message || err.message);
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleGoogleSuccess = async (credentialResponse) => {
+    setGoogleLoading(true);
+    setError('');
+
+    try {
+      const { data } = await apiService.googleLogin(credentialResponse.credential, 'trabajador');
+
+      // Guardar token y datos del usuario
+      localStorage.setItem('token', data.token);
+      localStorage.setItem('role', 'trabajador');
+      localStorage.setItem('userData', JSON.stringify(data.user));
+
+      // Redirigir al dashboard de trabajador
+      navigate('/worker');
+    } catch (err) {
+      setError(err.response?.data?.message || 'Error al iniciar sesión con Google');
+    } finally {
+      setGoogleLoading(false);
+    }
+  };
+
+  const handleGoogleError = () => {
+    setError('Error al conectar con Google. Por favor, intenta de nuevo.');
   };
 
   return (
@@ -87,7 +114,7 @@ const WorkerLogin = () => {
                       disabled={loading}
                     />
                   </div>
-                  <button type="submit" className="btn btn-dark w-100" disabled={loading}>
+                  <button type="submit" className="btn btn-dark w-100" disabled={loading || googleLoading}>
                     {loading ? (
                       <>
                         <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
@@ -101,6 +128,33 @@ const WorkerLogin = () => {
                     )}
                   </button>
                 </form>
+
+                {/* Separador */}
+                <div className="d-flex align-items-center my-4">
+                  <hr className="flex-grow-1" />
+                  <span className="px-3 text-muted small">o continúa con</span>
+                  <hr className="flex-grow-1" />
+                </div>
+
+                {/* Botón de Google */}
+                <div className="d-flex justify-content-center">
+                  {googleLoading ? (
+                    <div className="d-flex align-items-center">
+                      <span className="spinner-border spinner-border-sm me-2" role="status"></span>
+                      Conectando con Google...
+                    </div>
+                  ) : (
+                    <GoogleLogin
+                      onSuccess={handleGoogleSuccess}
+                      onError={handleGoogleError}
+                      theme="outline"
+                      size="large"
+                      text="signin_with"
+                      shape="rectangular"
+                      locale="es"
+                    />
+                  )}
+                </div>
               </div>
               <div className="card-footer text-center text-muted">
                 <small>Para personal operativo del sistema</small>

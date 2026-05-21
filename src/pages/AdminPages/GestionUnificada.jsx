@@ -37,6 +37,7 @@ const GestionUnificada = () => {
     username: '',
     password: '',
     nombre_completo: '',
+    correo: '',
     id_area_laboral: ''
   });
   const [roleForm, setRoleForm] = useState({
@@ -47,6 +48,7 @@ const GestionUnificada = () => {
     username: '',
     password: '',
     nombre_completo: '',
+    correo: '',
     id_personal_area: '',
     id_area_laboral: '',
     roles_ids: []
@@ -217,11 +219,13 @@ const GestionUnificada = () => {
       username: personal.username,
       password: '',
       nombre_completo: personal.nombre_completo,
+      correo: personal.correo || '',
       id_area_laboral: personal.id_area_laboral.toString()
     } : {
       username: '',
       password: '',
       nombre_completo: '',
+      correo: '',
       id_area_laboral: selectedArea ? selectedArea.id.toString() : ''
     });
     setShowPersonalModal(true);
@@ -253,6 +257,7 @@ const GestionUnificada = () => {
       username: trabajador.username,
       password: '', // No mostrar la contraseña al editar
       nombre_completo: trabajador.nombre_completo,
+      correo: trabajador.correo || '',
       id_personal_area: trabajador.id_personal_area.toString(),
       id_area_laboral: trabajador.id_area_laboral.toString(),
       roles_ids: trabajador.roles_ids || []
@@ -260,6 +265,7 @@ const GestionUnificada = () => {
       username: '',
       password: '',
       nombre_completo: '',
+      correo: '',
       id_personal_area: personalDeArea.id.toString(),
       id_area_laboral: selectedArea ? selectedArea.id.toString() : '',
       roles_ids: []
@@ -293,7 +299,11 @@ const GestionUnificada = () => {
     }
     
     try {
-      const payload = { ...personalForm, id_area_laboral: parseInt(personalForm.id_area_laboral) };
+      const payload = { 
+        ...personalForm, 
+        id_area_laboral: parseInt(personalForm.id_area_laboral),
+        correo: personalForm.correo || null
+      };
       const result = editingPersonal
         ? (await api.put(`/personal-area/${editingPersonal.id}`, payload)).data
         : (await api.post('/personal-area', payload)).data;
@@ -360,6 +370,7 @@ const GestionUnificada = () => {
       const dataToSend = {
         username: trabajadorForm.username,
         nombre_completo: trabajadorForm.nombre_completo,
+        correo: trabajadorForm.correo || null,
         id_personal_area: parseInt(personalDeArea.id),
         id_area_laboral: parseInt(selectedArea.id),
         roles_ids: trabajadorForm.roles_ids
@@ -866,6 +877,22 @@ const GestionUnificada = () => {
                         />
                       </div>
                       <div className="mb-3">
+                        <label className="form-label">Correo Electrónico (Gmail para login con Google)</label>
+                        <input
+                          type="email"
+                          className="form-control"
+                          name="correo"
+                          value={personalForm.correo}
+                          onChange={handlePersonalFormChange}
+                          placeholder="ejemplo@gmail.com"
+                          autoComplete="off"
+                        />
+                        <small className="text-muted">
+                          <i className="bi bi-info-circle me-1"></i>
+                          Si se proporciona, el usuario podrá iniciar sesión con Google
+                        </small>
+                      </div>
+                      <div className="mb-3">
                         <label className="form-label">Área Laboral *</label>
                         <select
                           className="form-select"
@@ -1022,6 +1049,23 @@ const GestionUnificada = () => {
                           autoComplete="off"
                           required
                         />
+                      </div>
+
+                      <div className="mb-3">
+                        <label className="form-label">Correo Electrónico (Gmail para login con Google)</label>
+                        <input
+                          type="email"
+                          className="form-control"
+                          name="correo"
+                          value={trabajadorForm.correo}
+                          onChange={handleTrabajadorFormChange}
+                          placeholder="ejemplo@gmail.com"
+                          autoComplete="off"
+                        />
+                        <small className="text-muted">
+                          <i className="bi bi-info-circle me-1"></i>
+                          Si se proporciona, el trabajador podrá iniciar sesión con Google
+                        </small>
                       </div>
                       
                       <div className="mb-3">

@@ -35,7 +35,8 @@ body {
 
 /* Sidebar colapsable en pantallas pequeñas */
 @media (max-width: 991.98px) {
-  .d-flex > .bg-dark {
+  .d-flex > .bg-dark,
+  .d-flex > .panel-sidebar {
     position: fixed;
     top: 0;
     left: 0;
@@ -44,19 +45,8 @@ body {
     transform: translateX(-100%);
     transition: transform .3s ease;
   }
-  .d-flex > .bg-light.border-end {
-    position: fixed;
-    top: 0;
-    left: 0;
-    height: 100vh;
-    z-index: 1050;
-    transform: translateX(-100%);
-    transition: transform .3s ease;
-  }
-  .d-flex.sidebar-open > .bg-dark {
-    transform: translateX(0);
-  }
-  .d-flex.sidebar-open > .bg-light.border-end {
+  .d-flex.sidebar-open > .bg-dark,
+  .d-flex.sidebar-open > .panel-sidebar {
     transform: translateX(0);
   }
   .d-flex > .flex-grow-1 {

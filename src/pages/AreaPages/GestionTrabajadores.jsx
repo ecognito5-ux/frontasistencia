@@ -14,6 +14,7 @@ const GestionTrabajadores = () => {
   
   // Estados de carga
   const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState('roles');
   
   // Estados de modales
   const [showRoleModal, setShowRoleModal] = useState(false);
@@ -33,6 +34,7 @@ const GestionTrabajadores = () => {
     username: '',
     password: '',
     nombre_completo: '',
+    correo: '',
     id_personal_area: userData.id || '',
     id_area_laboral: userData.id_area_laboral || '',
     roles_ids: []
@@ -54,11 +56,19 @@ const GestionTrabajadores = () => {
     try {
       const res = await api.get(`/trabajadores/personal-area/${userData.id}`);
       const data = res?.data;
-      setTrabajadores(data.data || data || []);
+      const todosLosTrabajadores = data.data || data || [];
+      
+      // Filtrar para excluir al encargado del área (usuario actual)
+      // Excluir por username para asegurarnos de que no aparezca el encargado
+      const trabajadoresFiltrados = todosLosTrabajadores.filter(
+        trabajador => trabajador.username !== userData.username
+      );
+      
+      setTrabajadores(trabajadoresFiltrados);
     } catch (err) {
       console.error('Error cargando trabajadores:', err);
     }
-  }, [token, userData.id]);
+  }, [token, userData.id, userData.username]);
 
   // Cargar datos iniciales
   useEffect(() => {
@@ -111,6 +121,7 @@ const GestionTrabajadores = () => {
       username: trabajador.username,
       password: '',
       nombre_completo: trabajador.nombre_completo,
+      correo: trabajador.correo || '',
       id_personal_area: trabajador.id_personal_area.toString(),
       id_area_laboral: trabajador.id_area_laboral.toString(),
       roles_ids: trabajador.roles_ids || []
@@ -118,6 +129,7 @@ const GestionTrabajadores = () => {
       username: '',
       password: '',
       nombre_completo: '',
+      correo: '',
       id_personal_area: userData.id.toString(),
       id_area_laboral: userData.id_area_laboral.toString(),
       roles_ids: []
@@ -145,12 +157,19 @@ const GestionTrabajadores = () => {
   const saveTrabajador = async (e) => {
     e.preventDefault();
     
+    // Validar que al menos un rol esté seleccionado
+    if (!trabajadorForm.roles_ids || trabajadorForm.roles_ids.length === 0) {
+      await alert('Debes seleccionar al menos un rol para el trabajador');
+      return;
+    }
+    
     try {
       const url = editingTrabajador ? `/trabajadores/${editingTrabajador.id}` : '/trabajadores';
       // Preparar datos para enviar
       const dataToSend = {
         username: trabajadorForm.username,
         nombre_completo: trabajadorForm.nombre_completo,
+        correo: trabajadorForm.correo || null,
         id_personal_area: parseInt(userData.id),
         id_area_laboral: parseInt(userData.id_area_laboral),
         roles_ids: trabajadorForm.roles_ids
@@ -232,36 +251,30 @@ const GestionTrabajadores = () => {
           </div>
 
           {/* Pestañas para Roles y Trabajadores */}
-          <ul className="nav nav-tabs mb-3" id="managementTabs" role="tablist">
+          <ul className="nav nav-tabs mb-3" role="tablist">
             <li className="nav-item" role="presentation">
               <button 
-                className="nav-link active" 
-                id="roles-tab" 
-                data-bs-toggle="tab" 
-                data-bs-target="#roles-content" 
-                type="button" 
-                role="tab"
+                className={`nav-link ${activeTab === 'roles' ? 'active' : ''}`}
+                type="button"
+                onClick={() => setActiveTab('roles')}
               >
                 <i className="bi bi-tags me-2"></i>Roles
               </button>
             </li>
             <li className="nav-item" role="presentation">
               <button 
-                className="nav-link" 
-                id="trabajadores-tab" 
-                data-bs-toggle="tab" 
-                data-bs-target="#trabajadores-content" 
-                type="button" 
-                role="tab"
+                className={`nav-link ${activeTab === 'trabajadores' ? 'active' : ''}`}
+                type="button"
+                onClick={() => setActiveTab('trabajadores')}
               >
                 <i className="bi bi-people me-2"></i>Trabajadores
               </button>
             </li>
           </ul>
 
-          <div className="tab-content" id="managementTabContent">
+          <div className="tab-content">
             {/* Pestaña Roles */}
-            <div className="tab-pane fade show active" id="roles-content" role="tabpanel">
+            <div className={`tab-pane fade ${activeTab === 'roles' ? 'show active' : ''}`} role="tabpanel">
               <div className="card">
                 <div className="card-header">
                   <div className="d-flex justify-content-between align-items-center">
@@ -319,7 +332,7 @@ const GestionTrabajadores = () => {
             </div>
 
             {/* Pestaña Trabajadores */}
-            <div className="tab-pane fade" id="trabajadores-content" role="tabpanel">
+            <div className={`tab-pane fade ${activeTab === 'trabajadores' ? 'show active' : ''}`} role="tabpanel">
               <div className="card">
                 <div className="card-header">
                   <div className="d-flex justify-content-between align-items-center">
@@ -449,93 +462,186 @@ const GestionTrabajadores = () => {
       {/* Modal Trabajador */}
       {showTrabajadorModal && (
         <div className="modal show d-block" tabIndex="-1" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
-          <div className="modal-dialog modal-lg">
-            <div className="modal-content">
-              <div className="modal-header">
-                <h5 className="modal-title">
+          <div className="modal-dialog modal-lg modal-dialog-centered">
+            <div className="modal-content shadow-lg" style={{ borderRadius: '15px' }}>
+              <div className="modal-header border-0 pb-0" style={{ background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', borderRadius: '15px 15px 0 0' }}>
+                <h5 className="modal-title text-white fw-bold">
+                  <i className="bi bi-person-plus-fill me-2"></i>
                   {editingTrabajador ? 'Editar Trabajador' : 'Nuevo Trabajador'}
                 </h5>
-                <button type="button" className="btn-close" onClick={() => setShowTrabajadorModal(false)}></button>
+                <button 
+                  type="button" 
+                  className="btn-close btn-close-white" 
+                  onClick={() => setShowTrabajadorModal(false)}
+                  style={{ filter: 'brightness(0) invert(1)' }}
+                ></button>
               </div>
               <form onSubmit={saveTrabajador} autoComplete="off">
-                <div className="modal-body">
-                  <div className="row">
-                    <div className="col-md-6 mb-3">
-                      <label className="form-label">Usuario (Username) *</label>
-                      <input
-                        type="text"
-                        className="form-control"
-                        name="username"
-                        value={trabajadorForm.username}
-                        onChange={handleTrabajadorFormChange}
-                        placeholder=""
-                        autoComplete="off"
-                        required
-                      />
-                    </div>
-                    <div className="col-md-6 mb-3">
-                      <label className="form-label">
-                        Contraseña {editingTrabajador ? '' : '*'}
-                      </label>
-                      <input
-                        type="password"
-                        className="form-control"
-                        name="password"
-                        value={trabajadorForm.password}
-                        onChange={handleTrabajadorFormChange}
-                        placeholder={editingTrabajador ? '' : ''}
-                        autoComplete="new-password"
-                        required={!editingTrabajador}
-                      />
-                      {editingTrabajador && (
-                        <small className="text-muted">Dejar en blanco para mantener la contraseña actual</small>
-                      )}
+                <div className="modal-body p-4">
+                  {/* Información básica */}
+                  <div className="mb-4">
+                    <h6 className="text-muted text-uppercase small mb-3">
+                      <i className="bi bi-person me-2"></i>Información Personal
+                    </h6>
+                    <div className="row g-3">
+                      <div className="col-md-6">
+                        <label className="form-label fw-semibold">
+                          Usuario <span className="text-danger">*</span>
+                        </label>
+                        <input
+                          type="text"
+                          className="form-control"
+                          name="username"
+                          value={trabajadorForm.username}
+                          onChange={handleTrabajadorFormChange}
+                          placeholder="nombre.usuario"
+                          autoComplete="off"
+                          required
+                        />
+                      </div>
+                      <div className="col-md-6">
+                        <label className="form-label fw-semibold">
+                          Nombre Completo <span className="text-danger">*</span>
+                        </label>
+                        <input
+                          type="text"
+                          className="form-control"
+                          name="nombre_completo"
+                          value={trabajadorForm.nombre_completo}
+                          onChange={handleTrabajadorFormChange}
+                          placeholder="Juan Pérez"
+                          autoComplete="off"
+                          required
+                        />
+                      </div>
                     </div>
                   </div>
 
-                  <div className="mb-3">
-                    <label className="form-label">Nombre Completo *</label>
+                  {/* Contraseña */}
+                  <div className="mb-4">
+                    <label className="form-label fw-semibold">
+                      Contraseña {!editingTrabajador && <span className="text-danger">*</span>}
+                    </label>
                     <input
-                      type="text"
+                      type="password"
                       className="form-control"
-                      name="nombre_completo"
-                      value={trabajadorForm.nombre_completo}
+                      name="password"
+                      value={trabajadorForm.password}
                       onChange={handleTrabajadorFormChange}
-                      placeholder=""
-                      autoComplete="off"
-                      required
+                      placeholder={editingTrabajador ? "Dejar vacío para mantener la actual" : "Mínimo 6 caracteres"}
+                      autoComplete="new-password"
+                      required={!editingTrabajador}
                     />
-                  </div>
-                  
-                  <div className="mb-3">
-                    <label className="form-label">Roles (Mantén Ctrl para seleccionar múltiples) *</label>
-                    <select
-                      className="form-select"
-                      name="roles_ids"
-                      multiple
-                      size="5"
-                      value={trabajadorForm.roles_ids}
-                      onChange={handleTrabajadorFormChange}
-                      style={{ minHeight: '120px' }}
-                    >
-                      {roles.map(role => (
-                        <option key={role.id} value={role.id}>
-                          {role.descripcion}
-                        </option>
-                      ))}
-                    </select>
-                    <div className="form-text">
+                    <small className="text-muted">
                       <i className="bi bi-info-circle me-1"></i>
-                      Mantén presionado Ctrl (o Cmd en Mac) para seleccionar múltiples roles
+                      {editingTrabajador 
+                        ? "Deja en blanco para mantener la contraseña actual. Solo necesaria si no se usa login con Google."
+                        : "La contraseña solo es necesaria si no se usa login con Google"
+                      }
+                    </small>
+                  </div>
+
+                  {/* Correo electrónico */}
+                  <div className="mb-4">
+                    <label className="form-label fw-semibold">
+                      <i className="bi bi-envelope me-1"></i>
+                      Correo Electrónico (Gmail)
+                    </label>
+                    <input
+                      type="email"
+                      className="form-control"
+                      name="correo"
+                      value={trabajadorForm.correo}
+                      onChange={handleTrabajadorFormChange}
+                      placeholder="usuario@gmail.com"
+                      autoComplete="off"
+                    />
+                    <div className="alert alert-info mt-2 mb-0 py-2" style={{ fontSize: '0.875rem' }}>
+                      <i className="bi bi-google me-1"></i>
+                      Si proporcionas un correo Gmail, el trabajador podrá iniciar sesión con Google de forma rápida
                     </div>
                   </div>
+                  
+                  {/* Roles - Mejorado con checkboxes */}
+                  <div className="mb-3">
+                    <label className="form-label fw-semibold">
+                      <i className="bi bi-tags me-1"></i>
+                      Roles Asignados <span className="text-danger">*</span>
+                    </label>
+                    <div 
+                      className="border rounded p-3" 
+                      style={{ 
+                        maxHeight: '200px', 
+                        overflowY: 'auto',
+                        backgroundColor: '#f8f9fa'
+                      }}
+                    >
+                      {roles.length === 0 ? (
+                        <div className="text-center text-muted py-3">
+                          <i className="bi bi-exclamation-triangle me-2"></i>
+                          No hay roles disponibles. Crea roles primero.
+                        </div>
+                      ) : (
+                        <div className="row g-2">
+                          {roles.map(role => (
+                            <div key={role.id} className="col-md-6">
+                              <div className="form-check">
+                                <input
+                                  className="form-check-input"
+                                  type="checkbox"
+                                  id={`role-${role.id}`}
+                                  checked={trabajadorForm.roles_ids.includes(role.id)}
+                                  onChange={(e) => {
+                                    if (e.target.checked) {
+                                      setTrabajadorForm(prev => ({
+                                        ...prev,
+                                        roles_ids: [...prev.roles_ids, role.id]
+                                      }));
+                                    } else {
+                                      setTrabajadorForm(prev => ({
+                                        ...prev,
+                                        roles_ids: prev.roles_ids.filter(id => id !== role.id)
+                                      }));
+                                    }
+                                  }}
+                                />
+                                <label 
+                                  className="form-check-label" 
+                                  htmlFor={`role-${role.id}`}
+                                  style={{ cursor: 'pointer' }}
+                                >
+                                  {role.descripcion}
+                                </label>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                    {trabajadorForm.roles_ids.length === 0 && (
+                      <small className="text-danger">
+                        <i className="bi bi-exclamation-circle me-1"></i>
+                        Debes seleccionar al menos un rol
+                      </small>
+                    )}
+                  </div>
                 </div>
-                <div className="modal-footer">
-                  <button type="button" className="btn btn-secondary" onClick={() => setShowTrabajadorModal(false)}>
-                    Cancelar
+                <div className="modal-footer border-0 pt-0">
+                  <button 
+                    type="button" 
+                    className="btn btn-outline-secondary" 
+                    onClick={() => setShowTrabajadorModal(false)}
+                  >
+                    <i className="bi bi-x-circle me-1"></i>Cancelar
                   </button>
-                  <button type="submit" className="btn btn-primary">
-                    {editingTrabajador ? 'Actualizar' : 'Crear'}
+                  <button 
+                    type="submit" 
+                    className="btn btn-primary"
+                    disabled={trabajadorForm.roles_ids.length === 0}
+                    style={{ background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', border: 'none' }}
+                  >
+                    <i className="bi bi-check-circle me-1"></i>
+                    {editingTrabajador ? 'Actualizar' : 'Crear Trabajador'}
                   </button>
                 </div>
               </form>
