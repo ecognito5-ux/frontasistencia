@@ -24,6 +24,11 @@ const Sidebar = ({ onLogout, onNavigate }) => (
         </Link>
       </li>
       <li className="nav-item mb-2">
+        <Link to="/admin/super-admins" className="nav-link" onClick={onNavigate}>
+          <i className="bi bi-shield-plus me-2"></i>Super Admins
+        </Link>
+      </li>
+      <li className="nav-item mb-2">
         <Link to="/admin/mi-perfil" className="nav-link" onClick={onNavigate}>
           <i className="bi bi-person-gear me-2"></i>Mi Perfil
         </Link>

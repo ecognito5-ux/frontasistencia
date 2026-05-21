@@ -58,6 +58,9 @@ const Dashboard = () => {
             <Link to="/admin/geolocalizacion" className="btn btn-outline-light">
               <i className="bi bi-geo-alt me-2"></i> Geolocalización
             </Link>
+            <Link to="/admin/super-admins" className="btn btn-outline-light">
+              <i className="bi bi-shield-plus me-2"></i> Super Admins
+            </Link>
             <button className="btn btn-danger" onClick={openModal}>
               <i className="bi bi-trash3 me-2"></i> Limpiar Base de Datos
             </button>
@@ -107,14 +110,14 @@ const Dashboard = () => {
               <div className="d-flex align-items-center justify-content-between">
                 <div>
                   <h6 className="text-uppercase text-muted mb-2">Seguridad</h6>
-                  <h3 className="mb-0">Respaldos</h3>
+                  <h3 className="mb-0">Super Admins</h3>
                 </div>
-                <i className="bi bi-shield-lock fs-1 text-warning"></i>
+                <i className="bi bi-shield-plus fs-1 text-warning"></i>
               </div>
-              <p className="text-muted mt-3 mb-3">Realiza exportaciones y resguarda la información.</p>
-              <button className="btn btn-outline-warning btn-sm" disabled>
-                Próximamente
-              </button>
+              <p className="text-muted mt-3 mb-3">Crea más cuentas de super administrador del sistema.</p>
+              <Link to="/admin/super-admins" className="btn btn-warning btn-sm">
+                Gestionar
+              </Link>
             </div>
           </div>
         </div>

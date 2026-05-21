@@ -65,7 +65,13 @@ export const apiService = {
   adminLogin: (credentials) => api.post('/admin/login', credentials),
   adminMe: () => api.get('/admin/me'),
   adminUpdateMe: (data) => api.put('/admin/me', data),
-  adminPurge: (confirm) => api.post('/admin/purge', { confirm }),
+    adminPurge: (confirm) => api.post('/admin/purge', { confirm }),
+
+    getSuperAdmins: () => api.get('/admin/admins'),
+    getSuperAdmin: (id) => api.get(`/admin/admins/${id}`),
+    createSuperAdmin: (data) => api.post('/admin/admins', data),
+    updateSuperAdmin: (id, data) => api.put(`/admin/admins/${id}`, data),
+    deleteSuperAdmin: (id) => api.delete(`/admin/admins/${id}`),
 
   getAreas: () => api.get('/areas'),
   getArea: (id) => api.get(`/areas/${id}`),

@@ -5,6 +5,7 @@ import AdminDashboard from './pages/AdminPages/Dashboard';
 import GestionUnificada from './pages/AdminPages/GestionUnificada';
 import Geolocalizacion from './pages/AdminPages/Geolocalizacion';
 import MiPerfil from './pages/AdminPages/MiPerfil';
+import GestionSuperAdmins from './pages/AdminPages/GestionSuperAdmins';
 import AreaLayout from './pages/AreaPages/AreaLayout';
 import AreaDashboard from './pages/AreaPages/AreaDashboard';
 import GestionTrabajadores from './pages/AreaPages/GestionTrabajadores';
@@ -27,6 +28,7 @@ function App() {
           <Route index element={<AdminDashboard />} />
           <Route path="gestion-unificada" element={<GestionUnificada />} />
           <Route path="geolocalizacion" element={<Geolocalizacion />} />
+          <Route path="super-admins" element={<GestionSuperAdmins />} />
           <Route path="mi-perfil" element={<MiPerfil />} />
         </Route>
         {/* Panel Área protegido */}
