@@ -124,6 +124,7 @@ export const apiService = {
   marcarAsistencia: (payload) => api.post('/asistencias', payload),
   actualizarComentarioAsistencia: (id, comentario) => api.patch(`/asistencias/${id}/comentario`, { comentario }),
 
+  login: (credentials) => api.post('/auth/login', credentials),
   googleLogin: (credential) => api.post('/auth/google/login', { credential }),
   getGoogleConfig: () => api.get('/auth/google/config'),
 };

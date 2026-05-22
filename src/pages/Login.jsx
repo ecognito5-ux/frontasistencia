@@ -4,6 +4,10 @@ import { GoogleLogin } from '@react-oauth/google';
 import { apiService } from '../services/api';
 
 const Login = () => {
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [error, setError] = useState('');
   const navigate = useNavigate();
@@ -13,6 +17,29 @@ const Login = () => {
     else if (role === 'area') navigate('/area');
     else if (role === 'trabajador') navigate('/worker');
     else navigate('/');
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    setError('');
+
+    try {
+      const { data } = await apiService.login({ email, password });
+      if (data?.token) {
+        localStorage.setItem('token', data.token);
+        localStorage.setItem('role', data.role);
+        localStorage.setItem('userData', JSON.stringify(data.user || {}));
+        redirectByRole(data.role);
+      } else {
+        throw new Error('Respuesta inválida');
+      }
+    } catch (err) {
+      console.error('Error al iniciar sesión:', err);
+      setError(err.response?.data?.message || 'Error al iniciar sesión. Verifica tus credenciales.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleGoogleSuccess = async (credentialResponse) => {
@@ -43,34 +70,35 @@ const Login = () => {
     <div 
       className="min-vh-100 d-flex align-items-center justify-content-center py-5"
       style={{
-        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+        background: 'linear-gradient(135deg, #1f1c2c 0%, #928dab 100%)',
         position: 'relative',
-        overflow: 'hidden'
+        overflow: 'hidden',
+        fontFamily: "'Outfit', 'Inter', sans-serif"
       }}
     >
       {/* Elementos decorativos de fondo */}
       <div 
         style={{
           position: 'absolute',
-          top: '-50%',
+          top: '-30%',
           right: '-10%',
           width: '600px',
           height: '600px',
-          background: 'rgba(255, 255, 255, 0.1)',
+          background: 'rgba(102, 126, 234, 0.15)',
           borderRadius: '50%',
-          filter: 'blur(80px)'
+          filter: 'blur(100px)'
         }}
       />
       <div 
         style={{
           position: 'absolute',
-          bottom: '-30%',
+          bottom: '-20%',
           left: '-10%',
           width: '500px',
           height: '500px',
-          background: 'rgba(255, 255, 255, 0.08)',
+          background: 'rgba(118, 75, 162, 0.12)',
           borderRadius: '50%',
-          filter: 'blur(60px)'
+          filter: 'blur(80px)'
         }}
       />
 
@@ -80,14 +108,14 @@ const Login = () => {
             <div 
               className="card border-0"
               style={{
-                borderRadius: '20px',
-                boxShadow: '0 20px 60px rgba(0, 0, 0, 0.3)',
-                backdropFilter: 'blur(10px)',
-                background: 'rgba(255, 255, 255, 0.95)',
+                borderRadius: '24px',
+                boxShadow: '0 25px 70px rgba(0, 0, 0, 0.4)',
+                backdropFilter: 'blur(15px)',
+                background: 'rgba(255, 255, 255, 0.96)',
                 overflow: 'hidden'
               }}
             >
-              {/* Header con gradiente */}
+              {/* Header con gradiente premium */}
               <div 
                 className="text-white text-center py-4"
                 style={{
@@ -95,11 +123,11 @@ const Login = () => {
                   position: 'relative'
                 }}
               >
-                <div className="mb-3">
+                <div className="mb-2">
                   <div 
                     style={{
-                      width: '80px',
-                      height: '80px',
+                      width: '72px',
+                      height: '72px',
                       margin: '0 auto',
                       background: 'rgba(255, 255, 255, 0.2)',
                       borderRadius: '50%',
@@ -107,84 +135,164 @@ const Login = () => {
                       alignItems: 'center',
                       justifyContent: 'center',
                       backdropFilter: 'blur(10px)',
-                      border: '2px solid rgba(255, 255, 255, 0.3)'
+                      border: '2px solid rgba(255, 255, 255, 0.4)'
                     }}
                   >
-                    <i className="bi bi-shield-lock" style={{ fontSize: '2.5rem' }}></i>
+                    <i className="bi bi-shield-lock-fill" style={{ fontSize: '2.2rem' }}></i>
                   </div>
                 </div>
-                <h3 className="mb-1 fw-bold">Bienvenido</h3>
-                <p className="mb-0 opacity-90" style={{ fontSize: '0.95rem' }}>
-                  Acceso al Sistema
+                <h3 className="mb-0 fw-bold" style={{ letterSpacing: '-0.5px' }}>COSSMIL</h3>
+                <p className="mb-0 opacity-80" style={{ fontSize: '0.9rem', fontWeight: 300 }}>
+                  Sistema Integrado de Asistencia
                 </p>
               </div>
 
-              <div className="card-body p-5">
+              <div className="card-body p-4 p-md-5">
                 {error && (
                   <div 
-                    className="alert alert-danger d-flex align-items-center mb-4" 
+                    className="alert alert-danger d-flex align-items-center mb-4 fade show" 
                     role="alert"
-                    style={{ borderRadius: '12px', border: 'none' }}
+                    style={{ borderRadius: '14px', border: 'none', background: 'rgba(220, 53, 69, 0.1)', color: '#dc3545', padding: '12px 16px' }}
                   >
-                    <i className="bi bi-exclamation-triangle-fill me-2"></i>
-                    <span>{error}</span>
+                    <i className="bi bi-exclamation-triangle-fill me-2 fs-5"></i>
+                    <span style={{ fontSize: '0.9rem', fontWeight: 500 }}>{error}</span>
                   </div>
                 )}
 
-                <div className="text-center mb-4">
-                  <p className="text-muted mb-4" style={{ fontSize: '1rem' }}>
-                    Inicia sesión de forma rápida y segura con tu cuenta de Google
-                  </p>
+                {/* Formulario de Credenciales */}
+                <form onSubmit={handleSubmit} autoComplete="off">
+                  <div className="mb-3">
+                    <label htmlFor="email" className="form-label text-secondary fw-semibold mb-1" style={{ fontSize: '0.85rem' }}>
+                      Usuario o Correo Electrónico
+                    </label>
+                    <div className="input-group" style={{ borderRadius: '12px', overflow: 'hidden', border: '1px solid #e0e0e0', transition: 'border-color 0.2s' }}>
+                      <span className="input-group-text bg-light border-0 text-muted px-3">
+                        <i className="bi bi-person-fill"></i>
+                      </span>
+                      <input
+                        type="text"
+                        id="email"
+                        className="form-control bg-light border-0 py-2.5 ps-2"
+                        placeholder="Ej. juan.perez o correo@cossmil.mil"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        required
+                        style={{ fontSize: '0.95rem', boxShadow: 'none' }}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="mb-4">
+                    <label htmlFor="password" className="form-label text-secondary fw-semibold mb-1" style={{ fontSize: '0.85rem' }}>
+                      Contraseña
+                    </label>
+                    <div className="input-group" style={{ borderRadius: '12px', overflow: 'hidden', border: '1px solid #e0e0e0', transition: 'border-color 0.2s' }}>
+                      <span className="input-group-text bg-light border-0 text-muted px-3">
+                        <i className="bi bi-lock-fill"></i>
+                      </span>
+                      <input
+                        type={showPassword ? "text" : "password"}
+                        id="password"
+                        className="form-control bg-light border-0 py-2.5 ps-2"
+                        placeholder="••••••••"
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        required
+                        style={{ fontSize: '0.95rem', boxShadow: 'none' }}
+                      />
+                      <button 
+                        type="button" 
+                        className="btn bg-light border-0 text-muted px-3"
+                        onClick={() => setShowPassword(!showPassword)}
+                        style={{ boxShadow: 'none' }}
+                      >
+                        <i className={showPassword ? "bi bi-eye-slash-fill" : "bi bi-eye-fill"}></i>
+                      </button>
+                    </div>
+                  </div>
+
+                  <button 
+                    type="submit" 
+                    disabled={loading || googleLoading}
+                    className="btn w-100 py-2.5 fw-semibold text-white mb-2" 
+                    style={{ 
+                      background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', 
+                      border: 'none',
+                      borderRadius: '12px',
+                      fontSize: '0.95rem',
+                      boxShadow: '0 4px 15px rgba(102, 126, 234, 0.3)',
+                      transition: 'all 0.3s ease'
+                    }}
+                  >
+                    {loading ? (
+                      <span className="d-flex align-items-center justify-content-center">
+                        <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                        Validando credenciales...
+                      </span>
+                    ) : (
+                      <span className="d-flex align-items-center justify-content-center">
+                        <i className="bi bi-box-arrow-in-right me-2 fs-5"></i>
+                        Iniciar Sesión
+                      </span>
+                    )}
+                  </button>
+                </form>
+
+                {/* Separador elegante */}
+                <div className="d-flex align-items-center my-4">
+                  <div style={{ flex: 1, height: '1px', background: 'rgba(0,0,0,0.08)' }}></div>
+                  <span className="text-muted mx-3" style={{ fontSize: '0.75rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '1.2px' }}>
+                    O ingresa con
+                  </span>
+                  <div style={{ flex: 1, height: '1px', background: 'rgba(0,0,0,0.08)' }}></div>
                 </div>
 
-                <div className="d-flex justify-content-center mb-4">
+                {/* Google Login */}
+                <div className="d-flex justify-content-center mb-2">
                   {googleLoading ? (
-                    <div className="d-flex flex-column align-items-center">
-                      <div className="spinner-border text-primary mb-3" role="status" style={{ width: '3rem', height: '3rem' }}>
+                    <div className="d-flex flex-column align-items-center py-2">
+                      <div className="spinner-border text-primary mb-2" role="status" style={{ width: '2rem', height: '2rem' }}>
                         <span className="visually-hidden">Cargando...</span>
                       </div>
-                      <p className="text-muted mb-0">Conectando con Google...</p>
+                      <p className="text-muted mb-0" style={{ fontSize: '0.85rem' }}>Conectando con Google...</p>
                     </div>
                   ) : (
-                    <div style={{ transform: 'scale(1.1)' }}>
+                    <div style={{ width: '100%', maxWidth: '280px', display: 'flex', justifyContent: 'center' }}>
                       <GoogleLogin
                         onSuccess={handleGoogleSuccess}
                         onError={handleGoogleError}
-                        theme="filled_blue"
+                        theme="outline"
                         size="large"
                         text="signin_with"
-                        shape="rectangular"
+                        shape="pill"
                         locale="es"
+                        disabled={loading}
                       />
                     </div>
                   )}
                 </div>
 
                 <div className="text-center mt-4">
-                  <div className="d-flex align-items-center justify-content-center mb-3">
-                    <div style={{ flex: 1, height: '1px', background: 'linear-gradient(to right, transparent, #dee2e6, transparent)' }}></div>
-                    <i className="bi bi-shield-check-fill text-primary mx-3" style={{ fontSize: '1.2rem' }}></i>
-                    <div style={{ flex: 1, height: '1px', background: 'linear-gradient(to right, transparent, #dee2e6, transparent)' }}></div>
-                  </div>
-                  <p className="text-muted mb-0" style={{ fontSize: '0.875rem' }}>
-                    <i className="bi bi-info-circle me-1"></i>
-                    Serás redirigido automáticamente a tu panel según tu rol
+                  <p className="text-muted mb-0" style={{ fontSize: '0.8rem' }}>
+                    <i className="bi bi-info-circle-fill text-primary me-1"></i>
+                    El sistema detectará tu rol de acceso automáticamente.
                   </p>
                 </div>
               </div>
 
-              {/* Footer decorativo */}
+              {/* Footer con diseño premium y seguro */}
               <div 
                 className="text-center py-3"
                 style={{
-                  background: 'linear-gradient(to right, transparent, rgba(102, 126, 234, 0.1), transparent)',
-                  borderTop: '1px solid rgba(0, 0, 0, 0.05)'
+                  background: 'rgba(248, 249, 250, 0.8)',
+                  borderTop: '1px solid rgba(0, 0, 0, 0.05)',
+                  fontSize: '0.8rem'
                 }}
               >
-                <small className="text-muted">
-                  <i className="bi bi-lock-fill me-1"></i>
-                  Acceso seguro y protegido
-                </small>
+                <span className="text-muted fw-medium">
+                  <i className="bi bi-shield-fill-check text-success me-1"></i>
+                  Acceso seguro mediante cifrado SSL
+                </span>
               </div>
             </div>
           </div>
